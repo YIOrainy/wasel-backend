@@ -1,0 +1,28 @@
+[project]
+name = "wasel-backend"
+version = "0.1.0"
+description = "Wasel delivery backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "email-validator>=2.1",
+    "pyjwt>=2.8",
+    "redis>=5.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.13",
+    "asyncpg>=0.29",
+    "aiosqlite>=0.20",
+]
+
+[project.optional-dependencies]
+dev = ["fakeredis>=2.23", "httpx>=0.27", "ruff", "pyright"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "RUF"]
