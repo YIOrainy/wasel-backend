@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.capitan_profile import CapitanProfile
+    from app.db.models.saved_location import SavedLocation
     from app.db.models.shipment import Shipment
 
 
@@ -53,6 +54,12 @@ class User(Base):
     shipments_assigned: Mapped[list[Shipment]] = relationship(
         back_populates="capitan",
         foreign_keys="Shipment.capitan_id",
+        passive_deletes=True,
+    )
+    # Addresses this user has saved (home, work, …).
+    saved_locations: Mapped[list[SavedLocation]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
         passive_deletes=True,
     )
 

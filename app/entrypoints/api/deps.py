@@ -1,4 +1,5 @@
 
+import uuid
 from collections.abc import AsyncIterator
 from typing import Annotated
 
@@ -10,12 +11,18 @@ from fastapi.security import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InvalidTokenError, PhoneAlreadyExistsError
+from app.core.exceptions import (
+    InvalidTokenError,
+    NotFoundError,
+    PhoneAlreadyExistsError,
+)
 from app.core.security import decode_registration_token, decode_user_token
 from app.db.base import AsyncSessionLocal
-from app.db.models import User
+from app.db.models import SavedLocation, User
 from app.services.auth.auth_service import AuthService
 from app.services.auth.otp.service import OtpService, build_otp_service
+from app.services.saved_locations.dal import SavedLocationsDAL
+from app.services.saved_locations.service import SavedLocationsService
 from app.services.users.dal import UsersDAL
 from app.services.users.service import UsersService
 
@@ -87,3 +94,36 @@ async def get_registration_phone(
 
 
 RegistrationPhone = Annotated[str, Depends(get_registration_phone)]
+
+
+def get_saved_locations_dal(session: SessionDep) -> SavedLocationsDAL:
+    return SavedLocationsDAL(session)
+
+
+SavedLocationsDALDep = Annotated[SavedLocationsDAL, Depends(get_saved_locations_dal)]
+
+
+def get_saved_locations_service(
+    session: SessionDep, saved_locations_dal: SavedLocationsDALDep
+) -> SavedLocationsService:
+    return SavedLocationsService(session, saved_locations_dal)
+
+
+SavedLocationsServiceDep = Annotated[
+    SavedLocationsService, Depends(get_saved_locations_service)
+]
+
+
+async def get_owned_saved_location(
+    saved_location_id: uuid.UUID,
+    user: CurrentUser,
+    saved_locations_dal: SavedLocationsDALDep,
+) -> SavedLocation:
+    location = await saved_locations_dal.get_by_id(saved_location_id)
+    # 404 (not 403) when it belongs to someone else, so we don't leak existence
+    if location is None or location.user_id != user.user_id:
+        raise NotFoundError("saved location not found")
+    return location
+
+
+OwnedSavedLocation = Annotated[SavedLocation, Depends(get_owned_saved_location)]

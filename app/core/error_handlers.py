@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.exceptions import (
     AuthError,
+    DuplicateLocationError,
     InvalidTokenError,
     InvalidTokenTypeError,
     NotFoundError,
@@ -62,6 +63,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         PhoneAlreadyExistsError,
         lambda r, e: _json(status.HTTP_409_CONFLICT, "phone already registered"),
+    )
+    app.add_exception_handler(
+        DuplicateLocationError,
+        lambda r, e: _json(
+            status.HTTP_409_CONFLICT, "location already saved at these coordinates"
+        ),
     )
     app.add_exception_handler(
         TokenExpiredError,

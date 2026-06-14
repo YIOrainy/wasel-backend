@@ -15,6 +15,10 @@ class PhoneAlreadyExistsError(ServiceError):
     """A user with this phone is already registered (lost the create race)."""
 
 
+class DuplicateLocationError(ServiceError):
+    """User already has a saved location at these exact coordinates."""
+
+
 class AuthError(ServiceError):
     """Base for authentication/authorization failures."""
 
