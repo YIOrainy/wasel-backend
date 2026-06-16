@@ -10,7 +10,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.db.models.bid import Bid
     from app.db.models.capitan_profile import CapitanProfile
+    from app.db.models.device import Device
     from app.db.models.saved_location import SavedLocation
     from app.db.models.shipment import Shipment
 
@@ -23,6 +25,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, nullable=True, unique=True)
     phone_number: Mapped[str | None] = mapped_column(String, nullable=False, unique=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    role: Mapped[str] = mapped_column(
+        String, nullable=False, default="user", server_default="user"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -58,6 +63,18 @@ class User(Base):
     )
     # Addresses this user has saved (home, work, …).
     saved_locations: Mapped[list[SavedLocation]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    # Bids this user placed as a captain.
+    bids: Mapped[list[Bid]] = relationship(
+        back_populates="capitan",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    # Push-notification targets (one per device).
+    devices: Mapped[list[Device]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,

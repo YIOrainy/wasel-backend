@@ -25,5 +25,10 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     registration_token_minutes: int = 10
 
+    # Expo push. No credentials needed in the backend — Apple/Google creds live
+    # in the EAS project. The access token is optional (Expo "enhanced security").
+    expo_push_url: str = "https://exp.host/--/api/v2/push/send"
+    expo_access_token: str | None = None
+
 
 settings = Settings()  # pyright: ignore[reportCallIssue]

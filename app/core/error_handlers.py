@@ -11,7 +11,9 @@ from app.core.exceptions import (
     InvalidTokenError,
     InvalidTokenTypeError,
     NotFoundError,
+    PermissionDeniedError,
     PhoneAlreadyExistsError,
+    ShipmentNotAcceptableError,
     TokenExpiredError,
 )
 from app.services.auth.otp.exceptions import (
@@ -69,6 +71,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         lambda r, e: _json(
             status.HTTP_409_CONFLICT, "location already saved at these coordinates"
         ),
+    )
+    app.add_exception_handler(
+        ShipmentNotAcceptableError,
+        lambda r, e: _json(
+            status.HTTP_409_CONFLICT, "shipment is no longer available for this action"
+        ),
+    )
+    app.add_exception_handler(
+        PermissionDeniedError,
+        lambda r, e: _json(status.HTTP_403_FORBIDDEN, "not allowed"),
     )
     app.add_exception_handler(
         TokenExpiredError,

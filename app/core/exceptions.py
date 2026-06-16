@@ -19,6 +19,16 @@ class DuplicateLocationError(ServiceError):
     """User already has a saved location at these exact coordinates."""
 
 
+class ShipmentNotAcceptableError(ServiceError):
+    """Shipment is no longer accepting this action — already accepted, expired,
+    cancelled, or past the pending/open window. The caller lost the race."""
+
+
+class PermissionDeniedError(ServiceError):
+    """Authenticated, but not allowed to perform this action (e.g. not a captain,
+    not an admin)."""
+
+
 class AuthError(ServiceError):
     """Base for authentication/authorization failures."""
 

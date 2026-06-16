@@ -41,6 +41,28 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    # Healthy once uvicorn responds — which is after `alembic upgrade head` has
+    # run (so the procrastinate schema exists before the worker starts).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    build: .
+    container_name: wasel-worker
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      app:
+        condition: service_healthy
+    # The worker only processes jobs — the API enqueues them. The Procrastinate
+    # schema is installed by Alembic (the app service runs `alembic upgrade head`).
+    command: procrastinate --app=app.jobs.app.procrastinate_app worker
 
 volumes:
   wasel_pg_data:
