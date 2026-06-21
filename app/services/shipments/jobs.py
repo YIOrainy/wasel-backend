@@ -17,16 +17,12 @@ async def expire_shipment(shipment_id: str) -> None:
     async with AsyncSessionLocal() as session:
         service = ShipmentsService(session, ShipmentsDAL(session), BidsDAL(session))
         sender_id = await service.expire(UUID(shipment_id))
+        await session.commit() 
         if sender_id is not None:
             await notify(sender_id, "shipment_expired", {"shipment_id": shipment_id})
 
 
 class ShipmentExpiryDispatcher:
-    """Enqueues the expiry job on the SAME DB connection as the shipment write,
-    so the job row and the shipment commit atomically — no separate-commit
-    window. Borrowing the session's psycopg connection also means the API never
-    needs the Procrastinate connector pool just to defer."""
-
     async def enqueue_expiry(self, session: AsyncSession, shipment: Shipment) -> None:
         job = expire_shipment.configure(
             schedule_at=shipment.expires_at

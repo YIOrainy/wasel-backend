@@ -26,6 +26,4 @@ class UsersService:
             email=email,
         )
         await self.users_dal.insert(user)
-        await self.session.commit()
-        await self.session.refresh(user, attribute_names=["capitan_profile"])
         return user

@@ -17,6 +17,7 @@ class ShipmentsDAL:
         )
         return result.scalar_one_or_none()
 
+    # TODO: add pagination to this query
     async def get_for_user(
         self, user_id: uuid.UUID, role: str | None = None
     ) -> list[Shipment]:
@@ -34,9 +35,6 @@ class ShipmentsDAL:
         return list(result.scalars().all())
 
     async def get_open(self) -> list[Shipment]:
-        """Pending shipments still inside their bidding window — the captain
-        browse feed. Expired rows fall out via the expires_at filter; visibility
-        needs no job."""
         result = await self.session.execute(
             select(Shipment)
             .where(
@@ -50,7 +48,6 @@ class ShipmentsDAL:
     async def insert(self, shipment: Shipment) -> None:
         self.session.add(shipment)
         await self.session.flush()
-
 
 class BidsDAL:
     def __init__(self, session: AsyncSession) -> None:

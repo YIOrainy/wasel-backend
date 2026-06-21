@@ -18,9 +18,6 @@ RETRY = RetryStrategy(max_attempts=3, exponential_wait=2, retry_exceptions=[http
 
 @procrastinate_app.task(name="send_push", queue="push", retry=RETRY)
 async def send_push(user_id: str, msg: dict) -> None:
-    """Push an event to a user's devices via Expo. Loads their tokens, sends,
-    and prunes any the gateway reports as dead. No-op if the user has no tokens
-    (e.g. they declined notification permission)."""
     async with AsyncSessionLocal() as session:
         service = DevicesService(session, DevicesDAL(session))
         devices = await service.tokens_for(UUID(user_id))
@@ -33,3 +30,4 @@ async def send_push(user_id: str, msg: dict) -> None:
 
         for token in expo.dead_tokens(tickets, tokens):
             await service.unregister(user_id=UUID(user_id), fcm_token=token)
+        await session.commit()  

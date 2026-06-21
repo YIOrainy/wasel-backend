@@ -76,8 +76,6 @@ class ShipmentsService:
         # Enqueue the expiry job on this same connection BEFORE commit
         if self.expiry_dispatcher is not None:
             await self.expiry_dispatcher.enqueue_expiry(self.session, shipment)
-        await self.session.commit()
-        # Thin broadcast — captains refetch the open list (no receiver PII pushed).
         await notify_request_feed(
             "new_request",
             {
@@ -120,7 +118,6 @@ class ShipmentsService:
                 stmt, execution_options={"populate_existing": True}
             )
         ).scalar_one()
-        await self.session.commit()
         await notify(
             shipment.sender_id,
             "new_bid",
@@ -144,7 +141,6 @@ class ShipmentsService:
             )
         ).first()
         if bid_row is None:
-            await self.session.rollback()
             bid = await self.bids_dal.get_by_id(bid_id)
             if bid is None or bid.shipment_id != shipment_id:
                 raise NotFoundError("bid not found") 
@@ -167,7 +163,6 @@ class ShipmentsService:
             )
         )
         if result.rowcount == 0:
-            await self.session.rollback()
             raise ShipmentNotAcceptableError()
 
         await self.session.execute(
@@ -179,7 +174,6 @@ class ShipmentsService:
             )
             .values(status=BidStatus.REJECTED)
         )
-        await self.session.commit()
         for sibling in await self.bids_dal.get_for_shipment(shipment_id):
             event = (
                 "bid_accepted"
@@ -204,7 +198,6 @@ class ShipmentsService:
             .values(status=ShipmentStatus.EXPIRED)
             .returning(Shipment.sender_id)
         )
-        await self.session.commit()
         row = result.first()
         return row[0] if row else None
 
@@ -218,12 +211,10 @@ class ShipmentsService:
             .values(status=ShipmentStatus.CANCELLED)
         )
         if result.rowcount == 0:
-            await self.session.rollback()
             # distinguish "not there" from "already terminal"
             if await self.shipments_dal.get_by_id(shipment_id) is None:
                 raise NotFoundError("shipment not found")
             raise ShipmentNotAcceptableError()
-        await self.session.commit()
         return await self.get_by_id(shipment_id)
 
     async def cancel_by_sender(
@@ -239,12 +230,10 @@ class ShipmentsService:
             .values(status=ShipmentStatus.CANCELLED)
         )
         if result.rowcount == 0:
-            await self.session.rollback()
             shipment = await self.shipments_dal.get_by_id(shipment_id)
             if shipment is None or shipment.sender_id != sender_id:
                 raise NotFoundError("shipment not found")  # not theirs / missing
             raise ShipmentNotAcceptableError()  # no longer pending
-        await self.session.commit()
         return await self.get_by_id(shipment_id)
 
     async def withdraw_bid(
@@ -259,9 +248,7 @@ class ShipmentsService:
             )
         )
         if result.rowcount == 0:
-            await self.session.rollback()
             bid = await self.bids_dal.get_by_id(bid_id)
             if bid is None or bid.capitan_id != capitan_id or bid.shipment_id != shipment_id:
                 raise NotFoundError("bid not found")  # not theirs / missing
             raise ShipmentNotAcceptableError()  # accepted/rejected → can't withdraw
-        await self.session.commit()

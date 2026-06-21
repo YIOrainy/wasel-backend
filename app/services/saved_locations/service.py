@@ -42,11 +42,9 @@ class SavedLocationsService:
             notes=notes,
         )
         try:
+            # DAL.insert flushes → unique violation surfaces here, not at commit
             await self.saved_locations_dal.insert(saved_location)
-            await self.session.commit()
         except IntegrityError:
-            # lost the race to a concurrent insert; the unique constraint caught it
-            await self.session.rollback()
             raise DuplicateLocationError() from None
         return saved_location
 
@@ -70,12 +68,11 @@ class SavedLocationsService:
         saved_location.lng = lng
         saved_location.notes = notes
         try:
-            await self.session.commit()
+            # flush now so a unique collision becomes a 409 here, not a 500 at commit
+            await self.session.flush()
         except IntegrityError:
-            await self.session.rollback()
             raise DuplicateLocationError() from None
         return saved_location
 
     async def delete(self, saved_location: SavedLocation) -> None:
         await self.saved_locations_dal.delete(saved_location)
-        await self.session.commit()
