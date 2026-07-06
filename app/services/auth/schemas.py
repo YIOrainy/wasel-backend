@@ -3,8 +3,9 @@ from typing import Annotated, Literal, Union
 
 from pydantic import EmailStr, Field
 
-from app.schemas.base import BaseSchema
-from app.schemas.users import UserRead
+from app.core.schema import BaseSchema
+from app.services.users.schemas import UserRead
+
 
 class OtpRequestIn(BaseSchema):
     phone: str

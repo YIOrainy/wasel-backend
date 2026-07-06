@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.db.models._enums import BidStatus
 from app.entrypoints.api.deps import CurrentCaptain, ShipmentsServiceDep
-from app.schemas.bid import BidRead, BidsRead
+from app.services.shipments.schemas import BidRead, BidsRead
 
 router = APIRouter(prefix="/bids", tags=["bids"])
 

@@ -242,3 +242,20 @@ async def get_viewable_shipment(
 
 
 ViewableShipment = Annotated[Shipment, Depends(get_viewable_shipment)]
+
+
+async def get_assigned_shipment(
+    shipment_id: uuid.UUID,
+    captain: CurrentCaptain,
+    shipments_dal: ShipmentsDALDep,
+) -> Shipment:
+    """The shipment assigned to the calling captain — gate for the post-accept
+    transitions (pickup → out-for-delivery → deliver). 404 (not 403) to anyone
+    else, same no-existence-leak rule as OwnedShipment."""
+    shipment = await shipments_dal.get_by_id(shipment_id)
+    if shipment is None or shipment.capitan_id != captain.user_id:
+        raise NotFoundError("shipment not found")
+    return shipment
+
+
+AssignedShipment = Annotated[Shipment, Depends(get_assigned_shipment)]

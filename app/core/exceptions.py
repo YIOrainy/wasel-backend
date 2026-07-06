@@ -24,6 +24,11 @@ class ShipmentNotAcceptableError(ServiceError):
     cancelled, or past the pending/open window. The caller lost the race."""
 
 
+class InvalidShipmentOtpError(ServiceError):
+    """Captain entered the wrong pickup/delivery code — distinct from a wrong
+    state so the app can show 'incorrect code' and let them retry."""
+
+
 class PermissionDeniedError(ServiceError):
     """Authenticated, but not allowed to perform this action (e.g. not a captain,
     not an admin)."""

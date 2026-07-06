@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Uuid
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -79,6 +80,10 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    # Reads through to the captain profile's rating (None for non-captains).
+    # Requires capitan_profile to be eager-loaded — async can't lazy-load.
+    rating = association_proxy("capitan_profile", "rating")
 
     @property
     def is_captain(self) -> bool:

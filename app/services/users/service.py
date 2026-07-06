@@ -26,4 +26,5 @@ class UsersService:
             email=email,
         )
         await self.users_dal.insert(user)
+        user.capitan_profile = None
         return user

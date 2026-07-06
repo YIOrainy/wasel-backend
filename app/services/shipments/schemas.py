@@ -4,8 +4,27 @@ from decimal import Decimal
 
 from pydantic import Field
 
-from app.db.models._enums import ShipmentStatus
-from app.schemas.base import BaseSchema
+from app.core.schema import BaseSchema
+from app.db.models._enums import BidStatus, ShipmentStatus
+from app.services.users.schemas import CaptainPublic
+
+
+class BidRequest(BaseSchema):
+    price: Decimal = Field(gt=0)
+
+
+class BidRead(BaseSchema):
+    bid_id: uuid.UUID
+    shipment_id: uuid.UUID
+    capitan: CaptainPublic
+    price: Decimal
+    status: BidStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class BidsRead(BaseSchema):
+    bids: list[BidRead]
 
 
 class ShipmentRequest(BaseSchema):
@@ -26,7 +45,7 @@ class ShipmentRequest(BaseSchema):
 class ShipmentRead(ShipmentRequest):
     shipment_id: uuid.UUID
     sender_id: uuid.UUID
-    capitan_id: uuid.UUID | None = None
+    capitan: CaptainPublic | None = None
     status: ShipmentStatus
     price: Decimal | None = None
     expires_at: datetime
@@ -40,3 +59,12 @@ class ShipmentRead(ShipmentRequest):
 
 class ShipmentsRead(BaseSchema):
     shipments: list[ShipmentRead]
+
+
+class ShipmentOtpRequest(BaseSchema):
+    otp: str = Field(min_length=1, max_length=10)
+
+
+class ShipmentOtps(BaseSchema):
+    pickup_otp: str | None = None
+    delivery_otp: str | None = None

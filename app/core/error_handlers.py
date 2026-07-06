@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from app.core.exceptions import (
     AuthError,
     DuplicateLocationError,
+    InvalidShipmentOtpError,
     InvalidTokenError,
     InvalidTokenTypeError,
     NotFoundError,
@@ -77,6 +78,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         lambda r, e: _json(
             status.HTTP_409_CONFLICT, "shipment is no longer available for this action"
         ),
+    )
+    app.add_exception_handler(
+        InvalidShipmentOtpError,
+        lambda r, e: _json(status.HTTP_422_UNPROCESSABLE_ENTITY, "incorrect code"),
     )
     app.add_exception_handler(
         PermissionDeniedError,

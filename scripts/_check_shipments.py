@@ -11,7 +11,7 @@ from app.core.exceptions import NotFoundError, ShipmentNotAcceptableError
 from app.db.base import AsyncSessionLocal
 from app.db.models import User
 from app.db.models._enums import BidStatus, ShipmentStatus
-from app.schemas.shipment import ShipmentRequest
+from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
 from app.services.shipments.service import ShipmentsService
 

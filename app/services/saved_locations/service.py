@@ -42,7 +42,6 @@ class SavedLocationsService:
             notes=notes,
         )
         try:
-            # DAL.insert flushes → unique violation surfaces here, not at commit
             await self.saved_locations_dal.insert(saved_location)
         except IntegrityError:
             raise DuplicateLocationError() from None

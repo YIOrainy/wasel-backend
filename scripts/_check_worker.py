@@ -14,7 +14,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models import Shipment, User
 from app.db.models._enums import ShipmentStatus
 from app.jobs.app import procrastinate_app
-from app.schemas.shipment import ShipmentRequest
+from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
 from app.services.shipments.jobs import ShipmentExpiryDispatcher, expire_shipment
 from app.services.shipments.service import ShipmentsService

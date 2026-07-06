@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.schemas.base import BaseSchema
+from app.core.schema import BaseSchema
 
 # Allowed values for a saved location's `kind`. Mirrors the model comment.
 SavedLocationKind = Literal["home", "work", "other"]

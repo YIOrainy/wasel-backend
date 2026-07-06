@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 
 from app.entrypoints.api.deps import CurrentUser, DevicesServiceDep
-from app.schemas.device import DeviceRead, DeviceRequest
+from app.services.devices.schemas import DeviceRead, DeviceRequest
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 

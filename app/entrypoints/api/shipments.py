@@ -4,14 +4,21 @@ from typing import Literal
 from fastapi import APIRouter, status
 
 from app.entrypoints.api.deps import (
+    AssignedShipment,
     CurrentCaptain,
     CurrentUser,
     OwnedShipment,
     ShipmentsServiceDep,
     ViewableShipment,
 )
-from app.schemas.bid import BidRead, BidRequest, BidsRead
-from app.schemas.shipment import ShipmentRead, ShipmentRequest, ShipmentsRead
+from app.services.shipments.schemas import BidRead, BidRequest, BidsRead
+from app.services.shipments.schemas import (
+    ShipmentOtpRequest,
+    ShipmentOtps,
+    ShipmentRead,
+    ShipmentRequest,
+    ShipmentsRead,
+)
 
 router = APIRouter(prefix="/shipments", tags=["shipments"])
 
@@ -117,3 +124,39 @@ async def cancel_shipment(
     else:
         updated = await service.cancel_by_sender(shipment_id, user.user_id)
     return ShipmentRead.model_validate(updated)
+
+
+# ── post-accept lifecycle (assigned captain only) ─────────────────────────────
+@router.post("/{shipment_id}/pickup", response_model=ShipmentRead)
+async def pickup_shipment(
+    shipment: AssignedShipment, payload: ShipmentOtpRequest, service: ShipmentsServiceDep
+) -> ShipmentRead:
+    """accepted → picked. Captain enters the sender's pickup code (409 wrong
+    state, 422 wrong code)."""
+    updated = await service.mark_picked_up(shipment=shipment, otp=payload.otp)
+    return ShipmentRead.model_validate(updated)
+
+
+@router.post("/{shipment_id}/out-for-delivery", response_model=ShipmentRead)
+async def out_for_delivery_shipment(
+    shipment: AssignedShipment, service: ShipmentsServiceDep
+) -> ShipmentRead:
+    """picked → out_for_delivery. No code — just the captain starting the trip."""
+    updated = await service.mark_out_for_delivery(shipment=shipment)
+    return ShipmentRead.model_validate(updated)
+
+
+@router.post("/{shipment_id}/deliver", response_model=ShipmentRead)
+async def deliver_shipment(
+    shipment: AssignedShipment, payload: ShipmentOtpRequest, service: ShipmentsServiceDep
+) -> ShipmentRead:
+    """out_for_delivery → delivered. Captain enters the receiver's delivery code."""
+    updated = await service.mark_delivered(shipment=shipment, otp=payload.otp)
+    return ShipmentRead.model_validate(updated)
+
+
+@router.get("/{shipment_id}/otps", response_model=ShipmentOtps)
+async def get_shipment_otps(shipment: OwnedShipment) -> ShipmentOtps:
+    """Sender-only: the codes to read out at handoff. Never exposed to the
+    captain (that's who has to enter them)."""
+    return ShipmentOtps.model_validate(shipment)

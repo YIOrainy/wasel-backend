@@ -3,7 +3,7 @@ from fastapi import APIRouter, status
 from app.db.models import User
 from app.entrypoints.api.deps import AuthServiceDep, RegistrationPhone
 from app.services.auth.auth_service import SessionTokens
-from app.schemas.auth import (
+from app.services.auth.schemas import (
     AccessTokenOut,
     AuthenticatedOut,
     OtpRequestIn,
@@ -14,7 +14,7 @@ from app.schemas.auth import (
     RegistrationRequiredOut,
     VerifyOut,
 )
-from app.schemas.users import UserRead
+from app.services.users.schemas import UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

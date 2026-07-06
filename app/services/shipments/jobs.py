@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import AsyncSessionLocal
 from app.db.models import Shipment
 from app.jobs.app import procrastinate_app
-from app.realtime.notify import notify
+from app.realtime.notify import notify, notify_request_feed
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
 from app.services.shipments.service import ShipmentsService
 
@@ -20,6 +20,8 @@ async def expire_shipment(shipment_id: str) -> None:
         await session.commit() 
         if sender_id is not None:
             await notify(sender_id, "shipment_expired", {"shipment_id": shipment_id})
+            # Drop the expired shipment from every captain's open feed.
+            await notify_request_feed("request_closed", {"shipment_id": shipment_id})
 
 
 class ShipmentExpiryDispatcher:

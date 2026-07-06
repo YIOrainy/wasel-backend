@@ -11,7 +11,7 @@ from app.db.base import AsyncSessionLocal
 from app.db.models import CapitanProfile, User
 from app.db.models._enums import BidStatus
 from app.entrypoints.api.deps import get_viewable_shipment
-from app.schemas.shipment import ShipmentRequest
+from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
 from app.services.shipments.service import ShipmentsService
 from app.services.users.dal import UsersDAL

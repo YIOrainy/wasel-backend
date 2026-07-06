@@ -5,7 +5,7 @@ from app.entrypoints.api.deps import (
     OwnedSavedLocation,
     SavedLocationsServiceDep,
 )
-from app.schemas.saved_location import (
+from app.services.saved_locations.schemas import (
     SavedLocationEntry,
     SavedLocationRead,
     SavedLocationsRead,

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from app.schemas.base import BaseSchema
+from app.core.schema import BaseSchema
 
 
 class UserRead(BaseSchema):
@@ -14,3 +14,10 @@ class UserRead(BaseSchema):
     avatar_url: str | None = None
     is_captain: bool = False
     created_at: datetime
+
+
+class CaptainPublic(BaseSchema):
+    id: uuid.UUID = Field(validation_alias="user_id")
+    name: str
+    avatar_url: str | None = None
+    rating: float | None = None  

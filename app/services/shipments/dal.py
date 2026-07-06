@@ -1,11 +1,16 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from app.db.models import Bid, Shipment
+from app.db.models import Bid, Shipment, User
 from app.db.models._enums import BidStatus, ShipmentStatus
 
+# captain + profile (for rating) — both to-one, so joinedload: 1 query, no row dup.
+_CAPITAN = joinedload(Shipment.capitan).joinedload(User.capitan_profile)
+_BID_CAPITAN = joinedload(Bid.capitan).joinedload(User.capitan_profile)
 
 class ShipmentsDAL:
     def __init__(self, session: AsyncSession) -> None:
@@ -13,7 +18,7 @@ class ShipmentsDAL:
 
     async def get_by_id(self, shipment_id: uuid.UUID) -> Shipment | None:
         result = await self.session.execute(
-            select(Shipment).where(Shipment.shipment_id == shipment_id)
+            select(Shipment).where(Shipment.shipment_id == shipment_id).options(_CAPITAN)
         )
         return result.scalar_one_or_none()
 
@@ -21,8 +26,6 @@ class ShipmentsDAL:
     async def get_for_user(
         self, user_id: uuid.UUID, role: str | None = None
     ) -> list[Shipment]:
-        """The caller's shipments, all statuses, newest first. role 'sender' →
-        ones they created; 'captain' → ones assigned to them; None → both."""
         if role == "sender":
             where = Shipment.sender_id == user_id
         elif role == "captain":
@@ -30,7 +33,7 @@ class ShipmentsDAL:
         else:
             where = or_(Shipment.sender_id == user_id, Shipment.capitan_id == user_id)
         result = await self.session.execute(
-            select(Shipment).where(where).order_by(Shipment.created_at.desc())
+            select(Shipment).where(where).order_by(Shipment.created_at.desc()).options(_CAPITAN)
         )
         return list(result.scalars().all())
 
@@ -41,7 +44,7 @@ class ShipmentsDAL:
                 Shipment.status == ShipmentStatus.PENDING,
                 Shipment.expires_at > func.now(),
             )
-            .order_by(Shipment.created_at)
+            .order_by(Shipment.created_at).options(_CAPITAN)
         )
         return list(result.scalars().all())
 
@@ -49,17 +52,30 @@ class ShipmentsDAL:
         self.session.add(shipment)
         await self.session.flush()
 
+    async def update_status(
+        self, shipment: Shipment, status: ShipmentStatus, ts_field: str
+    ) -> None:
+        shipment.status = status
+        setattr(shipment, ts_field, datetime.now(UTC))
+        await self.session.flush()
+
+
 class BidsDAL:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def get_by_id(self, bid_id: uuid.UUID) -> Bid | None:
-        result = await self.session.execute(select(Bid).where(Bid.bid_id == bid_id))
+        result = await self.session.execute(
+            select(Bid).where(Bid.bid_id == bid_id).options(_BID_CAPITAN)
+        )
         return result.scalar_one_or_none()
 
     async def get_for_shipment(self, shipment_id: uuid.UUID) -> list[Bid]:
         result = await self.session.execute(
-            select(Bid).where(Bid.shipment_id == shipment_id).order_by(Bid.created_at)
+            select(Bid)
+            .where(Bid.shipment_id == shipment_id)
+            .order_by(Bid.created_at)
+            .options(_BID_CAPITAN)
         )
         return list(result.scalars().all())
 
@@ -70,7 +86,9 @@ class BidsDAL:
         stmt = select(Bid).where(Bid.capitan_id == capitan_id)
         if status is not None:
             stmt = stmt.where(Bid.status == status)
-        result = await self.session.execute(stmt.order_by(Bid.created_at.desc()))
+        result = await self.session.execute(
+            stmt.order_by(Bid.created_at.desc()).options(_BID_CAPITAN)
+        )
         return list(result.scalars().all())
 
     async def insert(self, bid: Bid) -> None:

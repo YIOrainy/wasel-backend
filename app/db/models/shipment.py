@@ -69,7 +69,8 @@ class Shipment(Base):
     photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     # NULL until a bid is accepted; set to the agreed price on accept.
     price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
-    receiver_otp: Mapped[str] = mapped_column(String, nullable=True)
+    pickup_otp: Mapped[str] = mapped_column(String, nullable=True)
+    delivery_otp: Mapped[str] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
