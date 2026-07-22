@@ -229,3 +229,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Local experiments and scratch work
+experiments/
