@@ -25,6 +25,8 @@ from app.services.auth.auth_service import AuthService
 from app.services.auth.otp.service import OtpService, build_otp_service
 from app.services.devices.dal import DevicesDAL
 from app.services.devices.service import DevicesService
+from app.services.ratings.dal import RatingsDAL
+from app.services.ratings.service import RatingsService
 from app.services.saved_locations.dal import SavedLocationsDAL
 from app.services.saved_locations.service import SavedLocationsService
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
@@ -259,3 +261,18 @@ async def get_assigned_shipment(
 
 
 AssignedShipment = Annotated[Shipment, Depends(get_assigned_shipment)]
+
+
+# ── ratings ──────────────────────────────────────────────────────────────────
+def get_ratings_dal(session: SessionDep) -> RatingsDAL:
+    return RatingsDAL(session)
+
+
+RatingsDALDep = Annotated[RatingsDAL, Depends(get_ratings_dal)]
+
+
+def get_ratings_service(session: SessionDep, ratings_dal: RatingsDALDep) -> RatingsService:
+    return RatingsService(session, ratings_dal)
+
+
+RatingsServiceDep = Annotated[RatingsService, Depends(get_ratings_service)]
