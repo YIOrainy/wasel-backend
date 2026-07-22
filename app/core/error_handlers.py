@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.exceptions import (
+    AlreadyRatedError,
     AuthError,
     DuplicateLocationError,
     InvalidShipmentOtpError,
@@ -15,6 +16,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     PhoneAlreadyExistsError,
     ShipmentNotAcceptableError,
+    ShipmentNotRatableError,
     TokenExpiredError,
 )
 from app.services.auth.otp.exceptions import (
@@ -82,6 +84,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(
         InvalidShipmentOtpError,
         lambda r, e: _json(status.HTTP_422_UNPROCESSABLE_ENTITY, "incorrect code"),
+    )
+    app.add_exception_handler(
+        ShipmentNotRatableError,
+        lambda r, e: _json(
+            status.HTTP_409_CONFLICT, "shipment must be delivered before it can be rated"
+        ),
+    )
+    app.add_exception_handler(
+        AlreadyRatedError,
+        lambda r, e: _json(status.HTTP_409_CONFLICT, "shipment has already been rated"),
     )
     app.add_exception_handler(
         PermissionDeniedError,
