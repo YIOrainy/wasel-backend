@@ -29,6 +29,15 @@ class InvalidShipmentOtpError(ServiceError):
     state so the app can show 'incorrect code' and let them retry."""
 
 
+class ShipmentNotRatableError(ServiceError):
+    """Shipment must be delivered (and have an assigned captain) before its
+    sender can leave a rating."""
+
+
+class AlreadyRatedError(ServiceError):
+    """This shipment already has a rating — one review per shipment."""
+
+
 class PermissionDeniedError(ServiceError):
     """Authenticated, but not allowed to perform this action (e.g. not a captain,
     not an admin)."""

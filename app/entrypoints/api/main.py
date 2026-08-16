@@ -14,6 +14,7 @@ from app.entrypoints.api import (
     devices,
     events,
     health,
+    ratings,
     saved_locations,
     shipments,
 )
@@ -43,5 +44,6 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(saved_locations.router, prefix="/api")
 app.include_router(shipments.router, prefix="/api")
 app.include_router(bids.router, prefix="/api")
+app.include_router(ratings.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(devices.router, prefix="/api")
