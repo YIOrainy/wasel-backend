@@ -2,7 +2,6 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import (
-    CheckConstraint,
     DateTime,
     ForeignKey,
     String,
@@ -51,5 +50,4 @@ class Rating(Base):
     __table_args__ = (
         # One review per shipment — a shipment has exactly one sender/captain pair.
         UniqueConstraint("shipment_id", name="uq_ratings_shipment"),
-        CheckConstraint("stars BETWEEN 1 AND 5", name="ck_ratings_stars_range"),
     )

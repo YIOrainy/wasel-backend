@@ -31,11 +31,9 @@ def upgrade() -> None:
         ['capitan_id'], ['user_id'], ondelete='CASCADE',
     )
     op.create_unique_constraint('uq_ratings_shipment', 'ratings', ['shipment_id'])
-    op.create_check_constraint('ck_ratings_stars_range', 'ratings', 'stars BETWEEN 1 AND 5')
 
 
 def downgrade() -> None:
-    op.drop_constraint('ck_ratings_stars_range', 'ratings', type_='check')
     op.drop_constraint('uq_ratings_shipment', 'ratings', type_='unique')
     op.drop_constraint('fk_ratings_capitan_id_users', 'ratings', type_='foreignkey')
     op.drop_constraint('fk_ratings_sender_id_users', 'ratings', type_='foreignkey')

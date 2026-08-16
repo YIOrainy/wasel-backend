@@ -207,6 +207,19 @@ def get_current_captain(user: CurrentUser) -> User:
 CurrentCaptain = Annotated[User, Depends(get_current_captain)]
 
 
+async def get_captain_by_id(
+    capitan_id: uuid.UUID,
+    users_dal: UsersDALDep,
+) -> User:
+    captain = await users_dal.get_by_id(capitan_id)
+    if captain is None or not captain.is_captain:
+        raise NotFoundError("captain not found")
+    return captain
+
+
+CaptainById = Annotated[User, Depends(get_captain_by_id)]
+
+
 async def get_owned_shipment(
     shipment_id: uuid.UUID,
     user: CurrentUser,

@@ -1,8 +1,7 @@
-import uuid
-
 from fastapi import APIRouter, status
 
 from app.entrypoints.api.deps import (
+    CaptainById,
     CurrentUser,
     OwnedShipment,
     RatingsServiceDep,
@@ -42,15 +41,13 @@ async def get_shipment_rating(
 
 @router.get("/captains/{capitan_id}/ratings", response_model=CaptainPerformance)
 async def get_captain_performance(
-    capitan_id: uuid.UUID,
+    captain: CaptainById,
     _user: CurrentUser,
     service: RatingsServiceDep,
 ) -> CaptainPerformance:
-    """A captain's accumulated performance: average rating, review count, and
-    the full review history — used to display captain performance to senders."""
-    average, total, reviews = await service.get_captain_performance(capitan_id)
+    average, total, reviews = await service.get_captain_performance(captain.user_id)
     return CaptainPerformance(
-        capitan_id=capitan_id,
+        capitan_id=captain.user_id,
         average_rating=average,
         total_ratings=total,
         reviews=[RatingRead.model_validate(r) for r in reviews],

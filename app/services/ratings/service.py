@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,6 +55,19 @@ class RatingsService:
         return rating
 
     async def _refresh_capitan_rating(self, capitan_id: uuid.UUID) -> None:
+        # Recompute-and-store is a read-modify-write on capitan_profiles.rating.
+        # Two senders rating the same captain concurrently would each avg() a
+        # snapshot that can't see the other's uncommitted row, then write an
+        # absolute value — last committer wins with a stale number. Lock the
+        # profile row *before* reading so the second request blocks here and,
+        # once the first commits, its avg() runs as a fresh statement that sees
+        # the committed row. (SQLite has no FOR UPDATE; the dialect drops it,
+        # which is fine — SQLite serializes writers at the file level anyway.)
+        await self.session.execute(
+            select(CapitanProfile.capitan_profile_id)
+            .where(CapitanProfile.user_id == capitan_id)
+            .with_for_update()
+        )
         average, _total = await self.ratings_dal.get_stats_for_captain(capitan_id)
         await self.session.execute(
             update(CapitanProfile)
