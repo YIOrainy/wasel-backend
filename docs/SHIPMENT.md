@@ -6,6 +6,18 @@
 > post-acceptance delivery flow (`picked → out_for_delivery → delivered` + receiver OTP) is a
 > **separate** doc.
 
+> **Update (2026-08-18) — delivery modes.** The client no longer sends
+> `expectedPickupTime` / `expectedDeliveryTime` / `pickupAsap` (columns dropped). A request
+> now carries a required **`deliveryMode`**: `fast` = sender wants it done within 24h,
+> `regular` = offers per captain availability. The mode is a **signal to captains, not an
+> enforced SLA** — matching, bidding, expiry, and feed ordering are unchanged for both modes.
+> Every bid now carries a required **`promisedDeliveryTime`** (timezone-aware, must be in the
+> future); re-bidding updates price **and** promise, and accept snapshots the winning promise
+> onto `shipments.promised_delivery_time` alongside `price`. Pickup timing is never discussed
+> with the sender — it's the captain's call, and the actual moment is recorded by `picked_at`
+> at OTP handoff. TODO(fast-mode): a job 24h after acceptance flags undelivered `fast`
+> shipments to support.
+
 ---
 
 ## 0. The decisions, up front

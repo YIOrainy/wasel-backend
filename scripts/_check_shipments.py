@@ -10,7 +10,7 @@ from decimal import Decimal
 from app.core.exceptions import NotFoundError, ShipmentNotAcceptableError
 from app.db.base import AsyncSessionLocal
 from app.db.models import User
-from app.db.models._enums import BidStatus, ShipmentStatus
+from app.db.models._enums import BidStatus, DeliveryMode, ShipmentStatus
 from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
 from app.services.shipments.service import ShipmentsService
@@ -24,13 +24,15 @@ async def mk_user(session, name) -> uuid.UUID:
 
 
 def _req() -> ShipmentRequest:
-    now = datetime.now(UTC)
     return ShipmentRequest(
         pickup_city="Riyadh", destination_city="Jeddah",
         pickup_lat=24.7, pickup_lng=46.7, destination_lat=21.5, destination_lng=39.2,
-        receiver_phone_number=None, expected_pickup_time=now + timedelta(hours=2),
-        expected_delivery_time=now + timedelta(hours=8), pickup_asap=False,
+        receiver_phone_number=None, delivery_mode=DeliveryMode.REGULAR,
     )
+
+
+def _promise() -> datetime:
+    return datetime.now(UTC) + timedelta(hours=8)
 
 
 async def main() -> None:
@@ -41,21 +43,16 @@ async def main() -> None:
         cap2 = await mk_user(s, "cap2")
 
         now = datetime.now(UTC)
-        ship = await svc.create(sender_id=sender, data=ShipmentRequest(
-            pickup_city="Riyadh", destination_city="Jeddah",
-            pickup_lat=24.7, pickup_lng=46.7, destination_lat=21.5, destination_lng=39.2,
-            receiver_phone_number=None, expected_pickup_time=now + timedelta(hours=2),
-            expected_delivery_time=now + timedelta(hours=8), pickup_asap=False,
-        ))
+        ship = await svc.create(sender_id=sender, data=_req())
         assert ship.status == ShipmentStatus.PENDING
         assert ship.expires_at > now and ship.expires_at <= now + timedelta(hours=1, seconds=5)
         assert ship.price is None  # NULL until a bid is accepted
         print("create: ok")
 
         # two captains bid; cap1 re-bids (upsert, not a 2nd row)
-        b1 = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap1, price=Decimal("50"))
-        rebid = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap1, price=Decimal("45"))
-        b2 = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap2, price=Decimal("60"))
+        b1 = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap1, price=Decimal("50"), promised_delivery_time=_promise())
+        rebid = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap1, price=Decimal("45"), promised_delivery_time=_promise())
+        b2 = await svc.place_bid(shipment_id=ship.shipment_id, capitan_id=cap2, price=Decimal("60"), promised_delivery_time=_promise())
         # the returned object (what endpoints serialize) must reflect the new price
         assert rebid.price == Decimal("45"), f"re-bid return stale: {rebid.price}"
         assert rebid.bid_id == b1.bid_id, "re-bid must update the same row, not insert"
@@ -80,6 +77,7 @@ async def main() -> None:
         assert accepted.status == ShipmentStatus.ACCEPTED
         assert accepted.capitan_id == cap1
         assert accepted.price == Decimal("45")
+        assert accepted.promised_delivery_time is not None  # snapshotted from the bid
         bids = await BidsDAL(s).get_for_shipment(ship_id)
         won = [x for x in bids if x.bid_id == b1_id][0]
         lost = [x for x in bids if x.bid_id == b2_id][0]
@@ -102,7 +100,7 @@ async def main() -> None:
 
         # bidding after accept -> 409
         try:
-            await svc.place_bid(shipment_id=ship_id, capitan_id=cap2, price=Decimal("30"))
+            await svc.place_bid(shipment_id=ship_id, capitan_id=cap2, price=Decimal("30"), promised_delivery_time=_promise())
             raise SystemExit("FAIL: bid after accept should have raised")
         except ShipmentNotAcceptableError:
             print("bid-after-accept rejected: ok")
@@ -137,7 +135,7 @@ async def main() -> None:
             print("sender cancel non-owner 404: ok")
         # accepted shipment -> sender can't cancel (409)
         s4 = (await svc.create(sender_id=sender, data=_req())).shipment_id
-        b4 = (await svc.place_bid(shipment_id=s4, capitan_id=cap1, price=Decimal("20"))).bid_id
+        b4 = (await svc.place_bid(shipment_id=s4, capitan_id=cap1, price=Decimal("20"), promised_delivery_time=_promise())).bid_id
         await svc.accept_bid(shipment_id=s4, bid_id=b4, sender_id=sender)
         try:
             await svc.cancel_by_sender(s4, sender)
@@ -147,12 +145,12 @@ async def main() -> None:
 
         # ── captain withdraw bid ─────────────────────────────────────────────
         s5 = (await svc.create(sender_id=sender, data=_req())).shipment_id
-        w = (await svc.place_bid(shipment_id=s5, capitan_id=cap1, price=Decimal("30"))).bid_id
+        w = (await svc.place_bid(shipment_id=s5, capitan_id=cap1, price=Decimal("30"), promised_delivery_time=_promise())).bid_id
         await svc.withdraw_bid(shipment_id=s5, bid_id=w, capitan_id=cap1)
         assert await BidsDAL(s).get_for_shipment(s5) == [], "withdrawn bid should be gone"
         print("withdraw pending bid: ok (deleted)")
         # withdraw someone else's bid -> 404
-        w2 = (await svc.place_bid(shipment_id=s5, capitan_id=cap2, price=Decimal("31"))).bid_id
+        w2 = (await svc.place_bid(shipment_id=s5, capitan_id=cap2, price=Decimal("31"), promised_delivery_time=_promise())).bid_id
         try:
             await svc.withdraw_bid(shipment_id=s5, bid_id=w2, capitan_id=cap1)
             raise SystemExit("FAIL: withdraw other's bid should 404")
@@ -168,7 +166,7 @@ async def main() -> None:
 
         # ── accept-vs-withdraw gate: withdraw first, then accept -> 404 ───────
         s6 = (await svc.create(sender_id=sender, data=_req())).shipment_id
-        w3 = (await svc.place_bid(shipment_id=s6, capitan_id=cap1, price=Decimal("32"))).bid_id
+        w3 = (await svc.place_bid(shipment_id=s6, capitan_id=cap1, price=Decimal("32"), promised_delivery_time=_promise())).bid_id
         await svc.withdraw_bid(shipment_id=s6, bid_id=w3, capitan_id=cap1)
         try:
             await svc.accept_bid(shipment_id=s6, bid_id=w3, sender_id=sender)
@@ -181,7 +179,7 @@ async def main() -> None:
         c = await mk_user(s, "u-cap")
         s_a = (await svc.create(sender_id=u, data=_req())).shipment_id  # stays pending
         s_b = (await svc.create(sender_id=u, data=_req())).shipment_id
-        b = (await svc.place_bid(shipment_id=s_b, capitan_id=c, price=Decimal("10"))).bid_id
+        b = (await svc.place_bid(shipment_id=s_b, capitan_id=c, price=Decimal("10"), promised_delivery_time=_promise())).bid_id
         await svc.accept_bid(shipment_id=s_b, bid_id=b, sender_id=u)  # s_b → captain c
 
         sent = {x.shipment_id for x in await svc.list_for_user(u, role="sender")}

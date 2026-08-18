@@ -15,3 +15,8 @@ class BidStatus(enum.StrEnum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+
+
+class DeliveryMode(enum.StrEnum):
+    FAST = "fast" # 24h
+    REGULAR = "regular"

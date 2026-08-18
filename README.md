@@ -48,9 +48,8 @@ erDiagram
         enum status "pending|accepted|picked|out_for_delivery|delivered|expired|cancelled"
         timestamptz expires_at
         string receiver_phone_number
-        timestamptz expected_pickup_time
-        timestamptz expected_delivery_time
-        bool pickup_asap
+        enum delivery_mode "fast|regular"
+        timestamptz promised_delivery_time "set on bid accept"
         string special_handling
         string photo_url
         numeric price "set on bid accept"
@@ -67,6 +66,7 @@ erDiagram
         uuid shipment_id FK "unique with capitan_id"
         uuid capitan_id FK
         numeric price "must be > 0"
+        timestamptz promised_delivery_time
         enum status "pending|accepted|rejected"
     }
 

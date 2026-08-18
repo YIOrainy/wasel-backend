@@ -41,9 +41,7 @@ def main() -> None:
         r = c.post("/shipments", headers=sh, json={
             "pickupCity": "Riyadh", "destinationCity": "Jeddah",
             "pickupLat": 24.7, "pickupLng": 46.7, "destinationLat": 21.5, "destinationLng": 39.2,
-            "expectedPickupTime": (now + timedelta(hours=2)).isoformat(),
-            "expectedDeliveryTime": (now + timedelta(hours=8)).isoformat(),
-            "pickupAsap": False,
+            "deliveryMode": "regular",
         })
         assert r.status_code == 201, ("create", r.status_code, r.text)
         sid = r.json()["shipmentId"]
@@ -54,7 +52,10 @@ def main() -> None:
         assert r.status_code == 200 and any(x["shipmentId"] == sid for x in r.json()["shipments"])
         print("✓ captain browse sees open shipment")
 
-        r = c.post(f"/shipments/{sid}/bids", headers=ch, json={"price": "50"})
+        r = c.post(f"/shipments/{sid}/bids", headers=ch, json={
+            "price": "50",
+            "promisedDeliveryTime": (now + timedelta(hours=8)).isoformat(),
+        })
         assert r.status_code == 201, ("bid", r.status_code, r.text)
         bid = r.json()["bidId"]
         print("✓ captain placed bid")
@@ -69,7 +70,8 @@ def main() -> None:
 
         r = c.post(f"/shipments/{sid}/bids/{bid}/accept", headers=sh)
         assert r.status_code == 200 and r.json()["status"] == "accepted", r.text
-        print("✓ sender accept -> accepted")
+        assert r.json()["promisedDeliveryTime"], "accept must snapshot the bid's promise"
+        print("✓ sender accept -> accepted (promise snapshotted)")
 
         r = c.get(f"/shipments/{sid}/otps", headers=sh)
         assert r.status_code == 200, r.text

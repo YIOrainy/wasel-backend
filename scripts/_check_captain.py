@@ -9,7 +9,7 @@ from decimal import Decimal
 from app.core.exceptions import NotFoundError
 from app.db.base import AsyncSessionLocal
 from app.db.models import CapitanProfile, User
-from app.db.models._enums import BidStatus
+from app.db.models._enums import BidStatus, DeliveryMode
 from app.entrypoints.api.deps import get_viewable_shipment
 from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
@@ -32,13 +32,15 @@ async def mk_captain(s, name) -> User:
 
 
 def _req() -> ShipmentRequest:
-    now = datetime.now(UTC)
     return ShipmentRequest(
         pickup_city="Riyadh", destination_city="Jeddah",
         pickup_lat=24.7, pickup_lng=46.7, destination_lat=21.5, destination_lng=39.2,
-        expected_pickup_time=now + timedelta(hours=2),
-        expected_delivery_time=now + timedelta(hours=8),
+        delivery_mode=DeliveryMode.REGULAR,
     )
+
+
+def _promise() -> datetime:
+    return datetime.now(UTC) + timedelta(hours=8)
 
 
 async def main() -> None:
@@ -50,8 +52,8 @@ async def main() -> None:
 
         a = (await svc.create(sender_id=sender, data=_req())).shipment_id
         b = (await svc.create(sender_id=sender, data=_req())).shipment_id
-        await svc.place_bid(shipment_id=a, capitan_id=cap.user_id, price=Decimal("10"))
-        await svc.place_bid(shipment_id=b, capitan_id=cap.user_id, price=Decimal("20"))
+        await svc.place_bid(shipment_id=a, capitan_id=cap.user_id, price=Decimal("10"), promised_delivery_time=_promise())
+        await svc.place_bid(shipment_id=b, capitan_id=cap.user_id, price=Decimal("20"), promised_delivery_time=_promise())
 
         mine = await svc.list_my_bids(cap.user_id)
         assert {x.shipment_id for x in mine} == {a, b}

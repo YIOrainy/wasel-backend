@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.models._enums import ShipmentStatus
+from app.db.models._enums import DeliveryMode, ShipmentStatus
 from app.db.models._helpers import enum_values
 
 if TYPE_CHECKING:
@@ -62,9 +62,21 @@ class Shipment(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # type = Mapped[str] = mapped_column(String, nullable=False) should be enum
     receiver_phone_number: Mapped[str] = mapped_column(String, nullable=True)
-    expected_pickup_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    expected_delivery_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    pickup_asap: Mapped[bool] = mapped_column(nullable=False, default=False)
+    delivery_mode: Mapped[DeliveryMode] = mapped_column(
+        Enum(
+            DeliveryMode,
+            native_enum=False,
+            create_constraint=True,
+            values_callable=enum_values,
+            name="deliverymode",
+        ),
+        nullable=False,
+        server_default=DeliveryMode.REGULAR.value,
+    )
+    # NULL until a bid is accepted 
+    promised_delivery_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     special_handling: Mapped[str | None] = mapped_column(String, nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     # NULL until a bid is accepted; set to the agreed price on accept.

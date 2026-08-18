@@ -110,6 +110,7 @@ class ShipmentsService:
                 "shipment_id": str(shipment.shipment_id),
                 "pickup_city": shipment.pickup_city,
                 "destination_city": shipment.destination_city,
+                "delivery_mode": shipment.delivery_mode.value,
             },
         )
 
@@ -121,6 +122,7 @@ class ShipmentsService:
         shipment_id: uuid.UUID,
         capitan_id: uuid.UUID,
         price: Decimal,
+        promised_delivery_time: datetime,
     ) -> Bid:
         shipment = await self.shipments_dal.get_by_id(shipment_id)
 
@@ -138,6 +140,7 @@ class ShipmentsService:
             shipment_id=shipment_id,
             capitan_id=capitan_id,
             price=price,
+            promised_delivery_time=promised_delivery_time,
             status=BidStatus.PENDING,
         )
 
@@ -145,6 +148,7 @@ class ShipmentsService:
             index_elements=[Bid.shipment_id, Bid.capitan_id],
             set_={
                 "price": insert_stmt.excluded.price,
+                "promised_delivery_time": insert_stmt.excluded.promised_delivery_time,
             },
             # Important:
             # If the existing bid is already ACCEPTED or REJECTED,
@@ -194,7 +198,7 @@ class ShipmentsService:
                     Bid.status == BidStatus.PENDING,
                 )
                 .values(status=BidStatus.ACCEPTED)
-                .returning(Bid.capitan_id, Bid.price)
+                .returning(Bid.capitan_id, Bid.price, Bid.promised_delivery_time)
             )
         ).first()
 
@@ -206,7 +210,7 @@ class ShipmentsService:
 
             raise ShipmentNotAcceptableError("bid is already decided")
 
-        capitan_id, price = bid_row
+        capitan_id, price, promised_delivery_time = bid_row
 
         shipment = (
             await self.session.execute(
@@ -221,6 +225,7 @@ class ShipmentsService:
                     status=ShipmentStatus.ACCEPTED,
                     capitan_id=capitan_id,
                     price=price,  # snapshot the agreed price
+                    promised_delivery_time=promised_delivery_time,
                     accepted_at=func.now(),
                 )
                 .returning(Shipment),
@@ -230,6 +235,9 @@ class ShipmentsService:
 
         if shipment is None:
             raise ShipmentNotAcceptableError()
+
+        # TODO check after 24h if it is fast mode we should act
+
 
         rejected_bids = (
             await self.session.execute(

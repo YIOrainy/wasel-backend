@@ -12,7 +12,7 @@ from sqlalchemy import text, update
 
 from app.db.base import AsyncSessionLocal
 from app.db.models import Shipment, User
-from app.db.models._enums import ShipmentStatus
+from app.db.models._enums import DeliveryMode, ShipmentStatus
 from app.jobs.app import procrastinate_app
 from app.services.shipments.schemas import ShipmentRequest
 from app.services.shipments.dal import BidsDAL, ShipmentsDAL
@@ -21,12 +21,10 @@ from app.services.shipments.service import ShipmentsService
 
 
 def _req() -> ShipmentRequest:
-    now = datetime.now(UTC)
     return ShipmentRequest(
         pickup_city="Riyadh", destination_city="Jeddah",
         pickup_lat=24.7, pickup_lng=46.7, destination_lat=21.5, destination_lng=39.2,
-        receiver_phone_number=None, expected_pickup_time=now + timedelta(hours=2),
-        expected_delivery_time=now + timedelta(hours=8), pickup_asap=False,
+        receiver_phone_number=None, delivery_mode=DeliveryMode.REGULAR,
     )
 
 
@@ -86,7 +84,12 @@ async def main() -> None:
 
             # (C) accepted (then past-due) -> guard: must survive
             c = (await svc.create(sender_id=sender, data=_req())).shipment_id
-            bid = await svc.place_bid(shipment_id=c, capitan_id=cap, price=Decimal("40"))
+            bid = await svc.place_bid(
+                shipment_id=c,
+                capitan_id=cap,
+                price=Decimal("40"),
+                promised_delivery_time=datetime.now(UTC) + timedelta(hours=8),
+            )
             await svc.accept_bid(shipment_id=c, bid_id=bid.bid_id, sender_id=sender)
             await force_past_due(s, c)
 

@@ -78,9 +78,13 @@ async def place_bid(
     captain: CurrentCaptain,
     service: ShipmentsServiceDep,
 ) -> BidRead:
-    """Captains only. Upsert — re-bidding updates the price (409 if not open)."""
+    """Captains only. Upsert — re-bidding updates the price and promised
+    delivery time (409 if not open)."""
     bid = await service.place_bid(
-        shipment_id=shipment_id, capitan_id=captain.user_id, price=payload.price
+        shipment_id=shipment_id,
+        capitan_id=captain.user_id,
+        price=payload.price,
+        promised_delivery_time=payload.promised_delivery_time,
     )
     return BidRead.model_validate(bid)
 
